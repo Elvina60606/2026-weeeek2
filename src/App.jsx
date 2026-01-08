@@ -1,0 +1,182 @@
+import { useState } from 'react'
+import axios from 'axios';
+
+import './assets/style.css';
+
+const API_BASE = import.meta.env.VITE_API_BASE
+const API_PATH = import.meta.env.VITE_API_PATH
+
+//const token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImM0MTZJUSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS92dWUtY291cnNlLWFwaSIsImF1ZCI6InZ1ZS1jb3Vyc2UtYXBpIiwiYXV0aF90aW1lIjoxNzY3ODcwOTM0LCJ1c2VyX2lkIjoiV2pVaHcxT1JaUldFSDZMdzV6NjJMWU13MnEzMiIsInN1YiI6IldqVWh3MU9SWlJXRUg2THc1ejYyTFlNdzJxMzIiLCJpYXQiOjE3Njc4NzA5MzQsImV4cCI6MTc2ODMwMjkzNCwiZW1haWwiOiJjYXQyNTAwNzBAbGl2ZW1haWwudHciLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJjYXQyNTAwNzBAbGl2ZW1haWwudHciXX0sInNpZ25faW5fcHJvdmlkZXIiOiJwYXNzd29yZCJ9fQ.D5yxAunuZGor6oxiCEsvsVGTSxQNJO_e4OrZcjBLmQcUWIsP7c8DtGyFZRjIpo7-B9hUtzC6alAtJJ2E-MGlvY6N77PUoZHqgbMBe1XG00E9ncH31Hf_WiZMsFZTOUxMArYk0r-YVYnbs30swLCtfJKSPECJoEIZ-Lc-R6vPUIV2tIK5vzRubQzoZzndZ_9MPtOQsYXqQCbhuvVUpUiwkJr3xS6a_LOvmhZZQIFJqlAOs23cK8dX27CRxYmVGeg8LXQQ0J9aUjXFJqlvHcBVNPJmRSOi7kXkG44BiF_SPfC1YNpjxxECgo_CGMGzS-F9CdhPUUzOdOyO1tHQ7wKPXQ"
+
+function App() {
+  const [ formData, setFormData ] = useState({
+    username : "",
+    password : ""
+})
+  const [ isAuth, setIsAuth ] = useState(false)
+
+  const handleInput =(e) =>{
+    const { name, value } = e.target
+    setFormData((preData) => ({
+        ...preData,
+        [name] : value
+    }))
+  }
+
+  const onSubmit = async(e) => {
+    try {
+      e.preventDefault()
+      const result = await axios.post(`${API_BASE}admin/signin`, formData)
+      //console.log(result.data)
+      const { token, expired } = result.data
+      //console.log(token, expired)
+      document.cookie = `reactToken=${token}; expires=${new Date(expired)};`;
+      axios.defaults.headers.common['Authorization'] = token;
+      setIsAuth(true)
+      getProducts()
+    } 
+    catch (error) {
+      console.log(error.response.data.error) 
+    }
+  }
+
+  const [ isLogin, setIsLogin ] = useState(false)
+  
+  const checkLogin = async(e) => {
+    try {
+      const result = await axios.post(`${API_BASE}api/user/check`)
+      //console.log(result.data.success)
+      setIsLogin(result.data.success)
+    } 
+    catch (error) {
+      console.log(error) 
+    }
+  }
+{/*-------產品資料-------*/}
+  const [tempProduct, setTempProduct] = useState(null);
+  const [products, setProducts] = useState([]);
+
+  const getProducts = async(e) => {
+    try {
+      const res = await axios.get(`${API_BASE}api/${API_PATH}/admin/products`)
+      console.log(res)
+      setProducts(res.data.products)
+    } 
+    catch (error) {
+      console.log("get產品錯誤",error)  
+    }
+  }
+
+  return (
+    <>
+      { !isAuth ? (
+      <div className='container login'>
+        <h1>請先登入</h1>
+        <form className="form-floating" onSubmit={(e) => onSubmit(e)}>
+          <div className="form-floating mb-3">
+            <input type="email" 
+                  className="form-control" 
+                  name="username" 
+                  placeholder="name@example.com" 
+                  value={formData.username}
+                  onChange={(e) => handleInput(e)}
+                  />
+            <label htmlFor="username">Email address</label>
+          </div>
+          <div className="form-floating">
+            <input type="password" 
+                  className="form-control" 
+                  name="password" 
+                  placeholder="Password" 
+                  value={formData.password}
+                  onChange={(e) => handleInput(e)}
+                  />
+            <label htmlFor="password">Password</label>
+          </div>
+          <button type='submit' 
+                  className='btn btn-primary w-100 mt-3'>登入</button>
+        </form>
+        
+      </div>
+
+      ) : (
+        <div className="container">
+          <div className="row mt-5">
+            <div className="col-md-6">
+                <button type='button' 
+                        className='btn btn-success mt-4 mb-2'
+                        onClick={(e) => checkLogin(e)}
+                        >確認是否已登入
+                </button>
+                { isLogin ? <p className='text-secondary'>已登入</p> : " " }
+              <h2>產品列表</h2>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>產品名稱</th>
+                    <th>原價</th>
+                    <th>售價</th>
+                    <th>是否啟用</th>
+                    <th>查看細節</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.title}</td>
+                      <td>{item.origin_price}</td>
+                      <td>{item.price}</td>
+                      <td>
+                        {item.is_enabled ? "是" : "否"}
+                      </td>
+                      <td>
+                        <button className="btn btn-primary" onClick={()=>setTempProduct(item)}>查看細節</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="col-md-6">
+              <h2>單一產品細節</h2>
+              {tempProduct ? (
+                <div className="card mb-3">
+                  <img src={tempProduct.imageUrl} className="card-img-top primary-image" alt="主圖" />
+                  <div className="card-body">
+                    <h5 className="card-title">
+                      {tempProduct.title}
+                      <span className="badge bg-primary ms-2">{tempProduct.category}</span>
+                    </h5>
+                    <p className="card-text">商品描述：{tempProduct.description}</p>
+                    <p className="card-text">商品內容：{tempProduct.content}</p>
+                    <div className="d-flex">
+                      <p className="card-text text-secondary"><del>{tempProduct.origin_price}</del></p>
+                      元 / {tempProduct.price} 元
+                    </div>
+                    <h5 className="mt-3">更多圖片：</h5>
+                    <div className="d-flex flex-wrap">
+                      {tempProduct.imagesUrl.map((img, index) => {
+                        return(<img
+                                key={index}
+                                src={img}
+                                className="images"                      
+                                />
+                              )
+                        }
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-secondary">請選擇一個商品查看</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+    </>
+  )
+}
+
+export default App
